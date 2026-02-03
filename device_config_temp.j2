@@ -5,7 +5,7 @@ ipv6 unicast-routing
 !
 username adam privilege 15 secret 9 $9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9NvMQXrsG8YOIEK/JBU
 !
-{# Loop through interfaces for basic L3 config #}
+{# Loop through interfaces #}
 {% for iface in interfaces %}
 interface {{ iface.name }}
  {% if iface.description %}description {{ iface.description }}{% endif %}
@@ -13,43 +13,48 @@ interface {{ iface.name }}
  encapsulation dot1Q {{ iface.name.split('.')[-1] }}
  {% endif %}
  {% for ip in iface.ip_addresses %}
+  {# Only render if there is actually an address object #}
+  {% if ip.address %}
  ip address {{ ip.address.ip }} {{ ip.address.netmask }}
+  {% endif %}
  {% endfor %}
  no shutdown
 !
 {% endfor %}
 
 {# DMVPN Tunnel Logic #}
-{% set tunnel_list = interfaces | selectattr('name', 'equalto', 'Tunnel0') | list %}
-{% if tunnel_list | length > 0 and tunnel_list[0].ip_addresses %}
+{% for iface in interfaces if iface.name == 'Tunnel0' %}
 interface Tunnel0
- ip address {{ tunnel_list[0].ip_addresses[0].address.ip }} 255.255.255.0
+ {% if iface.ip_addresses and iface.ip_addresses[0].address %}
+ ip address {{ iface.ip_addresses[0].address.ip }} 255.255.255.0
+ {% endif %}
  tunnel source GigabitEthernet1.100
  tunnel mode gre multipoint
  tunnel protection ipsec profile DMVPN_PROFILE
 !
-{% endif %}
+{% endfor %}
 
 {# OSPF Logic #}
-{% set lo0_list = interfaces | selectattr('name', 'equalto', 'Loopback0') | list %}
-{% if lo0_list | length > 0 and lo0_list[0].ip_addresses %}
+{% for iface in interfaces if iface.name == 'Loopback0' %}
 router ospf 100
- router-id {{ lo0_list[0].ip_addresses[0].address.ip }}
+ {% if iface.ip_addresses and iface.ip_addresses[0].address %}
+ router-id {{ iface.ip_addresses[0].address.ip }}
+ {% endif %}
  network 150.1.0.0 0.0.255.255 area 0
  network 155.1.0.0 0.0.255.255 area 0
 !
-{% endif %}
+{% endfor %}
 
 {# BGP Logic #}
 {% set context = config_context[0] if config_context is iterable and config_context is not mapping else config_context %}
-{% if context and context.bgp %}
+{% if context and context.bgp and context.bgp.as_number %}
 router bgp {{ context.bgp.as_number }}
  bgp log-neighbor-changes
  {% if context.bgp.neighbors %}
- {% for neighbor in context.bgp.neighbors %}
+  {% for neighbor in context.bgp.neighbors %}
  neighbor {{ neighbor.ip }} remote-as {{ neighbor.remote_as }}
  neighbor {{ neighbor.ip }} update-source Loopback0
- {% endfor %}
+  {% endfor %}
  {% endif %}
 !
 {% endif %}
