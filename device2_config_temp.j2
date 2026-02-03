@@ -5,24 +5,25 @@ ipv6 unicast-routing
 !
 username adam privilege 15 secret 9 $9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9NvMQXrsG8YOIEK/JBU
 !
-{# Loop through all interfaces from your NetBox data #}
+{# Loop through interfaces #}
 {% for iface in interfaces %}
 interface {{ iface.name }}
  {% if iface.description %}description {{ iface.description }}{% endif %}
  {% if iface.ip_addresses %}
   {% for ip_obj in iface.ip_addresses %}
-   {# Your data shows '150.1.1.1/32' - we split to get the IP #}
+   {% if ip_obj.address %}
  ip address {{ ip_obj.address.split('/')[0] }} {{ '255.255.255.255' if '/32' in ip_obj.address else '255.255.255.0' }}
+   {% endif %}
   {% endfor %}
  {% endif %}
  no shutdown
 !
 {% endfor %}
 
-{# OSPF Logic - Mapping to your 'lo0' interface #}
+{# OSPF Logic #}
 {% for iface in interfaces if iface.name == 'lo0' %}
 router ospf 100
- {% if iface.ip_addresses %}
+ {% if iface.ip_addresses and iface.ip_addresses[0].address %}
  router-id {{ iface.ip_addresses[0].address.split('/')[0] }}
  {% endif %}
  network 150.1.0.0 0.0.255.255 area 0
@@ -30,14 +31,15 @@ router ospf 100
 !
 {% endfor %}
 
-{# BGP Logic - Mapping to your 'config_context' list #}
-{% set bgp_data = config_context[0].bgp if config_context[0] is defined else none %}
-{% if bgp_data %}
-router bgp {{ bgp_data.as_number }}
+{# BGP Logic - Direct loop over the config_context list #}
+{% for context in config_context if context.bgp is defined %}
+router bgp {{ context.bgp.as_number }}
  bgp log-neighbor-changes
- {% for neighbor in bgp_data.neighbors %}
+ {% if context.bgp.neighbors %}
+  {% for neighbor in context.bgp.neighbors %}
  neighbor {{ neighbor.ip }} remote-as {{ neighbor.remote_as }}
  neighbor {{ neighbor.ip }} update-source lo0
- {% endfor %}
+  {% endfor %}
+ {% endif %}
 !
-{% endif %}
+{% endfor %}
