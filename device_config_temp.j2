@@ -13,31 +13,39 @@ interface {{ iface.name }}
  encapsulation dot1Q {{ iface.name.split('.')[-1] }}
  {% endif %}
  {% for ip in iface.ip_addresses %}
- ip address {{ ip.address | ipaddr('address') }} {{ ip.address | ipaddr('netmask') }}
+ {# NetBox native: .address.ip and .address.netmask #}
+ ip address {{ ip.address.ip }} {{ ip.address.netmask }}
  {% endfor %}
  no shutdown
 !
 {% endfor %}
 
-{# DMVPN Tunnel Logic (Hardcoded or pulled from Custom Fields) #}
+{# DMVPN Tunnel Logic #}
+{% set tunnel_iface = interfaces | selectattr('name', 'equalto', 'Tunnel0') | first %}
+{% if tunnel_iface and tunnel_iface.ip_addresses %}
 interface Tunnel0
- ip address {{ interfaces | selectattr('name', 'equalto', 'Tunnel0') | map(attribute='ip_addresses') | first | map(attribute='address') | first | ipaddr('address') }} 255.255.255.0
+ {# We use .ip to get just the address part #}
+ ip address {{ tunnel_iface.ip_addresses[0].address.ip }} 255.255.255.0
  tunnel source GigabitEthernet1.100
  tunnel mode gre multipoint
  tunnel protection ipsec profile DMVPN_PROFILE
- {# Add NHRP maps here #}
 !
+{% endif %}
 
 router ospf 100
- router-id {{ (interfaces | selectattr('name', 'equalto', 'Loopback0') | first).ip_addresses[0].address | ipaddr('address') }}
+ {% set lo0 = interfaces | selectattr('name', 'equalto', 'Loopback0') | first %}
+ {% if lo0 and lo0.ip_addresses %}
+ router-id {{ lo0.ip_addresses[0].address.ip }}
+ {% endif %}
  network 150.1.0.0 0.0.255.255 area 0
  network 155.1.0.0 0.0.255.255 area 0
 !
 
-router bgp {{ config_context[0].bgp.as_number }}
+{# Handle config_context whether it is a list or a dictionary #}
+{% set context = config_context[0] if config_context is iterable and config_context is not mapping else config_context %}
+router bgp {{ context.bgp.as_number }}
  bgp log-neighbor-changes
- {# Dynamic Neighbor Generation: Loops through neighbors defined in Context #}
- {% for neighbor in config_context[0].bgp.neighbors %}
+ {% for neighbor in context.bgp.neighbors %}
  neighbor {{ neighbor.ip }} remote-as {{ neighbor.remote_as }}
  neighbor {{ neighbor.ip }} update-source Loopback0
  {% endfor %}
