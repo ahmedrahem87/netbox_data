@@ -1,0 +1,44 @@
+hostname {{ device.name }}
+!
+ip domain name example.com
+ipv6 unicast-routing
+!
+username adam privilege 15 secret 9 $9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9NvMQXrsG8YOIEK/JBU
+!
+{# Loop through interfaces for basic L3 config #}
+{% for iface in interfaces %}
+interface {{ iface.name }}
+ {% if iface.description %}description {{ iface.description }}{% endif %}
+ {% if '.' in iface.name %}
+ encapsulation dot1Q {{ iface.name.split('.')[-1] }}
+ {% endif %}
+ {% for ip in iface.ip_addresses %}
+ ip address {{ ip.address | ipaddr('address') }} {{ ip.address | ipaddr('netmask') }}
+ {% endfor %}
+ no shutdown
+!
+{% endfor %}
+
+{# DMVPN Tunnel Logic (Hardcoded or pulled from Custom Fields) #}
+interface Tunnel0
+ ip address {{ interfaces | selectattr('name', 'equalto', 'Tunnel0') | map(attribute='ip_addresses') | first | map(attribute='address') | first | ipaddr('address') }} 255.255.255.0
+ tunnel source GigabitEthernet1.100
+ tunnel mode gre multipoint
+ tunnel protection ipsec profile DMVPN_PROFILE
+ {# Add NHRP maps here #}
+!
+
+router ospf 100
+ router-id {{ (interfaces | selectattr('name', 'equalto', 'Loopback0') | first).ip_addresses[0].address | ipaddr('address') }}
+ network 150.1.0.0 0.0.255.255 area 0
+ network 155.1.0.0 0.0.255.255 area 0
+!
+
+router bgp {{ config_context[0].bgp.as_number }}
+ bgp log-neighbor-changes
+ {# Dynamic Neighbor Generation: Loops through neighbors defined in Context #}
+ {% for neighbor in config_context[0].bgp.neighbors %}
+ neighbor {{ neighbor.ip }} remote-as {{ neighbor.remote_as }}
+ neighbor {{ neighbor.ip }} update-source Loopback0
+ {% endfor %}
+!
