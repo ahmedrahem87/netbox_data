@@ -13,7 +13,6 @@ interface {{ iface.name }}
  encapsulation dot1Q {{ iface.name.split('.')[-1] }}
  {% endif %}
  {% for ip in iface.ip_addresses %}
- {# NetBox native: .address.ip and .address.netmask #}
  ip address {{ ip.address.ip }} {{ ip.address.netmask }}
  {% endfor %}
  no shutdown
@@ -21,32 +20,36 @@ interface {{ iface.name }}
 {% endfor %}
 
 {# DMVPN Tunnel Logic #}
-{% set tunnel_iface = interfaces | selectattr('name', 'equalto', 'Tunnel0') | first %}
-{% if tunnel_iface and tunnel_iface.ip_addresses %}
+{% set tunnel_list = interfaces | selectattr('name', 'equalto', 'Tunnel0') | list %}
+{% if tunnel_list | length > 0 and tunnel_list[0].ip_addresses %}
 interface Tunnel0
- {# We use .ip to get just the address part #}
- ip address {{ tunnel_iface.ip_addresses[0].address.ip }} 255.255.255.0
+ ip address {{ tunnel_list[0].ip_addresses[0].address.ip }} 255.255.255.0
  tunnel source GigabitEthernet1.100
  tunnel mode gre multipoint
  tunnel protection ipsec profile DMVPN_PROFILE
 !
 {% endif %}
 
+{# OSPF Logic #}
+{% set lo0_list = interfaces | selectattr('name', 'equalto', 'Loopback0') | list %}
+{% if lo0_list | length > 0 and lo0_list[0].ip_addresses %}
 router ospf 100
- {% set lo0 = interfaces | selectattr('name', 'equalto', 'Loopback0') | first %}
- {% if lo0 and lo0.ip_addresses %}
- router-id {{ lo0.ip_addresses[0].address.ip }}
- {% endif %}
+ router-id {{ lo0_list[0].ip_addresses[0].address.ip }}
  network 150.1.0.0 0.0.255.255 area 0
  network 155.1.0.0 0.0.255.255 area 0
 !
+{% endif %}
 
-{# Handle config_context whether it is a list or a dictionary #}
+{# BGP Logic #}
 {% set context = config_context[0] if config_context is iterable and config_context is not mapping else config_context %}
+{% if context and context.bgp %}
 router bgp {{ context.bgp.as_number }}
  bgp log-neighbor-changes
+ {% if context.bgp.neighbors %}
  {% for neighbor in context.bgp.neighbors %}
  neighbor {{ neighbor.ip }} remote-as {{ neighbor.remote_as }}
  neighbor {{ neighbor.ip }} update-source Loopback0
  {% endfor %}
+ {% endif %}
 !
+{% endif %}
