@@ -1,3 +1,12 @@
 {
-    "foo": 123
+    "bgp": {
+        "as_number": 65000,
+        "neighbors": [
+            {
+                "description": "iBGP to R3",
+                "ip": "150.1.1.3",
+                "remote_as": 65000
+            }
+        ]
+    }
 }
