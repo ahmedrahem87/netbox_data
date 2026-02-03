@@ -1,0 +1,22 @@
+hostname {{ device.name }}
+!
+{# Test if interfaces exist #}
+{% if interfaces is defined %}
+{% for iface in interfaces %}
+interface {{ iface.name }}
+ {% if iface.ip_addresses %}
+  {% for ip_obj in iface.ip_addresses %}
+ ip address {{ ip_obj.address.split('/')[0] }} 255.255.255.0
+  {% endfor %}
+ {% endif %}
+!
+{% endfor %}
+{% endif %}
+
+{# Minimal BGP Test #}
+{% if config_context is defined and config_context[0] is defined %}
+router bgp {{ config_context[0].bgp.as_number }}
+ {% for neighbor in config_context[0].bgp.neighbors %}
+ neighbor {{ neighbor.ip }} remote-as {{ neighbor.remote_as }}
+ {% endfor %}
+{% endif %}
