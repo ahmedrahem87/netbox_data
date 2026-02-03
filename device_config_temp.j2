@@ -12,12 +12,13 @@ interface {{ iface.name }}
  {% if '.' in iface.name %}
  encapsulation dot1Q {{ iface.name.split('.')[-1] }}
  {% endif %}
- {% for ip in iface.ip_addresses %}
-  {# Only render if there is actually an address object #}
-  {% if ip.address %}
- ip address {{ ip.address.ip }} {{ ip.address.netmask }}
-  {% endif %}
- {% endfor %}
+ {% if iface.ip_addresses %}
+  {% for ip_obj in iface.ip_addresses %}
+   {% if ip_obj.address %}
+ ip address {{ ip_obj.address.split('/')[0] }} {{ ip_obj.address.split('/')[-1] | default('24') }}
+   {% endif %}
+  {% endfor %}
+ {% endif %}
  no shutdown
 !
 {% endfor %}
@@ -26,7 +27,7 @@ interface {{ iface.name }}
 {% for iface in interfaces if iface.name == 'Tunnel0' %}
 interface Tunnel0
  {% if iface.ip_addresses and iface.ip_addresses[0].address %}
- ip address {{ iface.ip_addresses[0].address.ip }} 255.255.255.0
+ ip address {{ iface.ip_addresses[0].address.split('/')[0] }} 255.255.255.0
  {% endif %}
  tunnel source GigabitEthernet1.100
  tunnel mode gre multipoint
@@ -38,7 +39,7 @@ interface Tunnel0
 {% for iface in interfaces if iface.name == 'Loopback0' %}
 router ospf 100
  {% if iface.ip_addresses and iface.ip_addresses[0].address %}
- router-id {{ iface.ip_addresses[0].address.ip }}
+ router-id {{ iface.ip_addresses[0].address.split('/')[0] }}
  {% endif %}
  network 150.1.0.0 0.0.255.255 area 0
  network 155.1.0.0 0.0.255.255 area 0
@@ -46,8 +47,8 @@ router ospf 100
 {% endfor %}
 
 {# BGP Logic #}
-{% set context = config_context[0] if config_context is iterable and config_context is not mapping else config_context %}
-{% if context and context.bgp and context.bgp.as_number %}
+{% set context = config_context[0] if (config_context is iterable and config_context is not mapping) else config_context %}
+{% if context and context.bgp %}
 router bgp {{ context.bgp.as_number }}
  bgp log-neighbor-changes
  {% if context.bgp.neighbors %}
@@ -58,3 +59,4 @@ router bgp {{ context.bgp.as_number }}
  {% endif %}
 !
 {% endif %}
+
