@@ -5,41 +5,39 @@ ipv6 unicast-routing
 !
 username adam privilege 15 secret 9 $9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9NvMQXrsG8YOIEK/JBU
 !
-{# Loop through interfaces #}
+{# Loop through interfaces using the global 'interfaces' list #}
 {% for iface in interfaces %}
 interface {{ iface.name }}
  {% if iface.description %}description {{ iface.description }}{% endif %}
- {% if iface.ip_addresses %}
-  {% for ip_obj in iface.ip_addresses %}
-   {% if ip_obj.address %}
- ip address {{ ip_obj.address.split('/')[0] }} {{ '255.255.255.255' if '/32' in ip_obj.address else '255.255.255.0' }}
-   {% endif %}
-  {% endfor %}
- {% endif %}
+ {# Check if the interface has any IP addresses assigned #}
+ {% for ip in iface.ip_addresses.all() %}
+ ip address {{ ip.address.ip }} {{ ip.address.netmask }}
+ {% endfor %}
  no shutdown
 !
 {% endfor %}
 
-{# OSPF Logic #}
+{# OSPF Logic - Checking for lo0 specifically #}
 {% for iface in interfaces if iface.name == 'lo0' %}
 router ospf 100
- {% if iface.ip_addresses and iface.ip_addresses[0].address %}
- router-id {{ iface.ip_addresses[0].address.split('/')[0] }}
- {% endif %}
+ {% for ip in iface.ip_addresses.all() %}
+ router-id {{ ip.address.ip }}
+ {% endfor %}
  network 150.1.0.0 0.0.255.255 area 0
  network 155.1.0.0 0.0.255.255 area 0
 !
 {% endfor %}
 
-{# BGP Logic - Direct loop over the config_context list #}
-{% for context in config_context if context.bgp is defined %}
-router bgp {{ context.bgp.as_number }}
+{# BGP Logic - Looking into the Config Context #}
+{% if config_context %}
+ {# Since config_context is a list in your data, we loop through it #}
+ {% for ctx in config_context if ctx.bgp is defined %}
+router bgp {{ ctx.bgp.as_number }}
  bgp log-neighbor-changes
- {% if context.bgp.neighbors %}
-  {% for neighbor in context.bgp.neighbors %}
+ {% for neighbor in ctx.bgp.neighbors %}
  neighbor {{ neighbor.ip }} remote-as {{ neighbor.remote_as }}
  neighbor {{ neighbor.ip }} update-source lo0
-  {% endfor %}
- {% endif %}
-!
-{% endfor %}
+ {% endfor %}
+ !
+ {% endfor %}
+{% endif %}
