@@ -22,9 +22,9 @@ interface {{ iface.name }}
 
  {# IPv4 addresses #}
  {% for ip in iface.ip_addresses.all() %}
-  {% if ip.family.value == 4 %}
- ip address {{ ip.address.ip }} {{ ip.address.netmask }}
-  {% endif %}
+ {% if ip.family == 4 %}
+  ip address {{ ip.address.ip }} {{ ip.address.netmask }}
+ {% endif %}
  {% endfor %}
 
  no shutdown
