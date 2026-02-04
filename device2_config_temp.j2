@@ -17,7 +17,7 @@ interface {{ iface.name }}
 
  {# Subinterface logic #}
  {% if iface.parent and iface.tagged_vlans.all() %}
- encapsulation dot1Q {{ iface.tagged_vlans.all[0].vid }}
+ encapsulation dot1Q {{ iface.tagged_vlans.all()[0].vid }}
  {% endif %}
 
  {# IPv4 addresses #}
