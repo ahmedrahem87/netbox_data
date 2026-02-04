@@ -17,24 +17,27 @@ interface {{ iface.name }}
 {% endfor %}
 
 {# OSPF Logic #}
-{% for iface in device.interfaces.all() if iface.name == 'lo0' %}
-router ospf 100
+{% if full_context.ospf is defined %}
+router ospf {{ full_context.ospf.process_id }}
+ {% for iface in device.interfaces.all() if iface.name == 'Loopback0' %}
  {% for ip in iface.ip_addresses.all() %}
  router-id {{ ip.address.ip }}
  {% endfor %}
- network 150.1.0.0 0.0.255.255 area 0
- network 155.1.0.0 0.0.255.255 area 0
+ {% endfor %}
+ {% for net in full_context.ospf.networks %}
+ network {{ net.network }} {{ net.wildcard }} area {{ net.area }}
+ {% endfor %}
 !
-{% endfor %}
+{% endif %}
+
 
 {# BGP Logic - Looking at device.get_config_context() #}
-{% set full_context = device.get_config_context() %}
-{% if full_context and full_context.bgp %}
+{% if full_context.bgp is defined %}
 router bgp {{ full_context.bgp.as_number }}
  bgp log-neighbor-changes
- {% for neighbor in full_context.bgp.neighbors %}
- neighbor {{ neighbor.ip }} remote-as {{ neighbor.remote_as }}
- neighbor {{ neighbor.ip }} update-source lo0
+ {% for n in full_context.bgp.neighbors %}
+ neighbor {{ n.ip }} remote-as {{ n.remote_as }}
+ neighbor {{ n.ip }} update-source Loopback0
  {% endfor %}
 !
 {% endif %}
