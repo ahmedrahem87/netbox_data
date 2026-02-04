@@ -5,6 +5,8 @@ ipv6 unicast-routing
 !
 username adam privilege 15 secret 9 $9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9NvMQXrsG8YOIEK/JBU
 !
+{% set full_context = device.get_config_context() %}
+
 {# Loop through interfaces via the device object #}
 {% for iface in device.interfaces.all() %}
 interface {{ iface.name }}
