@@ -7,16 +7,30 @@ username adam privilege 15 secret 9 $9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9N
 !
 {% set full_context = device.get_config_context() %}
 
-{# Loop through interfaces via the device object #}
+{# Loop through interfaces #}
 {% for iface in device.interfaces.all() %}
 interface {{ iface.name }}
- {% if iface.description %}description {{ iface.description }}{% endif %}
+
+ {% if iface.description %}
+ description {{ iface.description }}
+ {% endif %}
+
+ {# Subinterface logic #}
+ {% if iface.parent and iface.tagged_vlans %}
+ encapsulation dot1Q {{ iface.tagged_vlans[0].vid }}
+ {% endif %}
+
+ {# IPv4 addresses #}
  {% for ip in iface.ip_addresses.all() %}
+  {% if ip.family.value == 4 %}
  ip address {{ ip.address.ip }} {{ ip.address.netmask }}
+  {% endif %}
  {% endfor %}
+
  no shutdown
 !
 {% endfor %}
+
 
 {# OSPF Logic #}
 {% if full_context.ospf is defined %}
