@@ -1,26 +1,34 @@
+{% set full_context = device.get_config_context() %}
+
 <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
   <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
 
     <hostname>{{ device.name }}</hostname>
 
+    {% if full_context.ospf is defined %}
     <router>
       <ospf xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-ospf">
-        <ospf-instance>
-          <id>
-            <process-id>{{ full_context.ospf.process_id }}</process-id>
-            <router-id>
-              {{ device.interfaces.get(name='Loopback0').ip_addresses.first.address.ip }}
-            </router-id>
-          </id>
-        </ospf-instance>
+        <process-id>
+          <id>{{ full_context.ospf.process_id }}</id>
+
+          {% for iface in device.interfaces.all() if iface.name == 'Loopback0' %}
+          {% for ip in iface.ip_addresses.all() %}
+          <router-id>{{ ip.address.ip }}</router-id>
+          {% endfor %}
+          {% endfor %}
+
+        </process-id>
       </ospf>
     </router>
+    {% endif %}
 
+    {% if full_context.bgp is defined %}
     <router>
       <bgp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-bgp">
         <id>{{ full_context.bgp.as_number }}</id>
       </bgp>
     </router>
+    {% endif %}
 
   </native>
 </config>
