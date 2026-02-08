@@ -1,0 +1,21 @@
+<config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
+    <hostname>{{ device.name }}</hostname>
+
+    <router>
+      <ospf xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-ospf">
+        <process-id>
+          <id>{{ full_context.ospf.process_id }}</id>
+          <router-id>{{ device.interfaces.get(name='Loopback0').ip_addresses.first.address.ip }}</router-id>
+        </process-id>
+      </ospf>
+    </router>
+
+    <router>
+      <bgp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-bgp">
+        <id>{{ full_context.bgp.as_number }}</id>
+      </bgp>
+    </router>
+  </native>
+</config>
+
