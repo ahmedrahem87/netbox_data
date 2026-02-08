@@ -28,29 +28,25 @@
       <unicast-routing/>
     </ipv6>
 
+    <!-- ================= USER ================= -->
     <username>
       <name>adam</name>
       <privilege>15</privilege>
-      <secret>
-        <type>9</type>
-        <secret>$9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9NvMQXrsG8YOIEK/JBU</secret>
-      </secret>
+      <!-- IOS-XE NETCONF: NO <type> -->
+      <secret>$9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9NvMQXrsG8YOIEK/JBU</secret>
     </username>
 
     <!-- ================= INTERFACES ================= -->
     <interface>
-      {% for iface in device.interfaces.all() %}
-      <{{ iface.name.split('0')[0] | lower }}>
-        <name>{{ iface.name.replace(iface.name.split('0')[0], '') }}</name>
 
+      {% for iface in device.interfaces.all() %}
+      {% if iface.name.startswith('Loopback') %}
+      <Loopback>
+        <name>0</name>
         <shutdown>false</shutdown>
 
-        {% if iface.description %}
-        <description>{{ iface.description }}</description>
-        {% endif %}
-
         {% for ip in iface.ip_addresses.all() %}
-          {% if ip.address.version == 4 %}
+        {% if ip.address.version == 4 %}
         <ip>
           <address>
             <primary>
@@ -59,19 +55,36 @@
             </primary>
           </address>
         </ip>
-          {% endif %}
+        {% endif %}
         {% endfor %}
+      </Loopback>
+      {% endif %}
 
-        {% if iface.parent and iface.tagged_vlans.all() %}
-        <encapsulation>
-          <dot1Q>
-            <vlan-id>{{ iface.tagged_vlans.all()[0].vid }}</vlan-id>
-          </dot1Q>
-        </encapsulation>
+      {% if iface.name.startswith('GigabitEthernet') and '.' not in iface.name %}
+      <GigabitEthernet>
+        <name>{{ iface.name.replace('GigabitEthernet','') }}</name>
+        <shutdown>false</shutdown>
+
+        {% if iface.description %}
+        <description>{{ iface.description }}</description>
         {% endif %}
 
-      </{{ iface.name.split('0')[0] | lower }}>
+        {% for ip in iface.ip_addresses.all() %}
+        {% if ip.address.version == 4 %}
+        <ip>
+          <address>
+            <primary>
+              <address>{{ ip.address.ip }}</address>
+              <mask>{{ ip.address.netmask }}</mask>
+            </primary>
+          </address>
+        </ip>
+        {% endif %}
+        {% endfor %}
+      </GigabitEthernet>
+      {% endif %}
       {% endfor %}
+
     </interface>
 
     <!-- ================= OSPF ================= -->
@@ -81,11 +94,9 @@
         <ospf-instance>
           <id>
             <process-id>{{ full_context.ospf.process_id }}</process-id>
-
-            {% if lo_ip is not none %}
+            {% if lo_ip %}
             <router-id>{{ lo_ip.address.ip }}</router-id>
             {% endif %}
-
           </id>
 
           {% for net in full_context.ospf.networks %}
@@ -95,7 +106,6 @@
             <area>{{ net.area }}</area>
           </network>
           {% endfor %}
-
         </ospf-instance>
       </ospf>
     </router>
@@ -114,7 +124,6 @@
           <update-source>Loopback0</update-source>
         </neighbor>
         {% endfor %}
-
       </bgp>
     </router>
     {% endif %}
