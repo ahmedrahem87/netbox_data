@@ -10,7 +10,7 @@ username adam privilege 15 secret 9 $9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9N
 {# Loop through interfaces #}
 {% for iface in device.interfaces.all() %}
 interface {{ iface.name }}
-
+ no shutdown
  {% if iface.description %}
  description {{ iface.description }}
  {% endif %}
