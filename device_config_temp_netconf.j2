@@ -1,13 +1,15 @@
 {% set full_context = device.get_config_context() %}
 
-{# --- LOOPBACK IPV4 --- #}
+{# ================= LOOPBACK IPV4 SAFE DETECTION ================= #}
 {% set lo0 = device.interfaces.get(name='Loopback0') %}
 {% set lo_ip = none %}
-{% for ip in lo0.ip_addresses.all() %}
-  {% if ip.address.version == 4 %}
-    {% set lo_ip = ip %}
-  {% endif %}
-{% endfor %}
+{% if lo0 %}
+  {% for ip in lo0.ip_addresses.all() %}
+    {% if ip.address.version == 4 %}
+      {% set lo_ip = ip %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
 
 <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
 
@@ -37,7 +39,6 @@
 
     <!-- ================= INTERFACES ================= -->
     <interface>
-
       {% for iface in device.interfaces.all() %}
       <{{ iface.name.split('0')[0] | lower }}>
         <name>{{ iface.name.replace(iface.name.split('0')[0], '') }}</name>
@@ -71,7 +72,6 @@
 
       </{{ iface.name.split('0')[0] | lower }}>
       {% endfor %}
-
     </interface>
 
     <!-- ================= OSPF ================= -->
@@ -81,16 +81,20 @@
         <ospf-instance>
           <id>
             <process-id>{{ full_context.ospf.process_id }}</process-id>
+
+            {% if lo_ip is not none %}
             <router-id>{{ lo_ip.address.ip }}</router-id>
+            {% endif %}
+
           </id>
 
+          {% for net in full_context.ospf.networks %}
           <network>
-            {% for net in full_context.ospf.networks %}
             <ip>{{ net.network }}</ip>
             <wildcard>{{ net.wildcard }}</wildcard>
             <area>{{ net.area }}</area>
-            {% endfor %}
           </network>
+          {% endfor %}
 
         </ospf-instance>
       </ospf>
@@ -103,13 +107,13 @@
       <bgp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-bgp">
         <id>{{ full_context.bgp.as_number }}</id>
 
+        {% for n in full_context.bgp.neighbors %}
         <neighbor>
-          {% for n in full_context.bgp.neighbors %}
           <id>{{ n.ip }}</id>
           <remote-as>{{ n.remote_as }}</remote-as>
           <update-source>Loopback0</update-source>
-          {% endfor %}
         </neighbor>
+        {% endfor %}
 
       </bgp>
     </router>
