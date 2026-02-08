@@ -1,4 +1,6 @@
 {% set full_context = device.get_config_context() %}
+{% set lo0 = device.interfaces.get(name='Loopback0') %}
+{% set lo_ip = lo0.ip_addresses.filter(family=4).first() %}
 
 <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
   <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
@@ -10,9 +12,7 @@
         <ospf-instance>
           <id>
             <process-id>{{ full_context.ospf.process_id }}</process-id>
-            <router-id>
-              {{ device.interfaces.get(name='Loopback0').ip_addresses.first.address.ip }}
-            </router-id>
+            <router-id>{{ lo_ip.address.ip }}</router-id>
           </id>
         </ospf-instance>
       </ospf>
