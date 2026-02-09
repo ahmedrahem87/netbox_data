@@ -31,10 +31,10 @@
     <interface>
 
       {% for iface in device.interfaces.all() %}
-      {% if iface.name.startswith('Loopback') %}
+
+      {% if iface.name == 'Loopback0' %}
       <Loopback>
         <name>0</name>
-        <shutdown>false</shutdown>
 
         {% for ip in iface.ip_addresses.all() %}
         {% if ip.address.version == 4 %}
@@ -53,8 +53,7 @@
 
       {% if iface.name.startswith('GigabitEthernet') and '.' not in iface.name %}
       <GigabitEthernet>
-        <name>{{ iface.name.replace('GigabitEthernet','') }}</name>
-        <shutdown>false</shutdown>
+        <name>{{ iface.name.replace('GigabitEthernet', '') }}</name>
 
         {% if iface.description %}
         <description>{{ iface.description }}</description>
@@ -74,13 +73,16 @@
         {% endfor %}
       </GigabitEthernet>
       {% endif %}
+
       {% endfor %}
 
     </interface>
 
-    <!-- ================= OSPF ================= -->
-    {% if full_context.ospf is defined %}
+    <!-- ================= ROUTING (SINGLE CONTAINER) ================= -->
+    {% if full_context.ospf is defined or full_context.bgp is defined %}
     <router>
+
+      {% if full_context.ospf is defined %}
       <ospf xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-ospf">
         <ospf-instance>
           <id>
@@ -99,12 +101,9 @@
           {% endfor %}
         </ospf-instance>
       </ospf>
-    </router>
-    {% endif %}
+      {% endif %}
 
-    <!-- ================= BGP ================= -->
-    {% if full_context.bgp is defined %}
-    <router>
+      {% if full_context.bgp is defined %}
       <bgp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-bgp">
         <id>{{ full_context.bgp.as_number }}</id>
 
@@ -116,6 +115,8 @@
         </neighbor>
         {% endfor %}
       </bgp>
+      {% endif %}
+
     </router>
     {% endif %}
 
