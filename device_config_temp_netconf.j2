@@ -11,8 +11,8 @@
   {% endfor %}
 {% endif %}
 
-
-<native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
+<config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
 
     <!-- ================= GLOBAL ================= -->
     <hostname>{{ device.name }}</hostname>
@@ -129,5 +129,5 @@
     {% endif %}
 
   </native>
-
+</config>
 
