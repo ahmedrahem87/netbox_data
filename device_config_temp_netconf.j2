@@ -1,6 +1,5 @@
 {% set full_context = device.get_config_context() %}
 
-{# ================= LOOPBACK IPV4 SAFE DETECTION ================= #}
 {% set lo0 = device.interfaces.get(name='Loopback0') %}
 {% set lo_ip = none %}
 {% if lo0 %}
@@ -14,7 +13,6 @@
 <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
   <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
 
-    <!-- ================= GLOBAL ================= -->
     <hostname>{{ device.name }}</hostname>
 
     <ip>
@@ -27,15 +25,12 @@
       <unicast-routing/>
     </ipv6>
 
-    <!-- ================= INTERFACES ================= -->
     <interface>
-
       {% for iface in device.interfaces.all() %}
 
       {% if iface.name == 'Loopback0' %}
       <Loopback>
         <name>0</name>
-
         {% for ip in iface.ip_addresses.all() %}
         {% if ip.address.version == 4 %}
         <ip>
@@ -53,7 +48,7 @@
 
       {% if iface.name.startswith('GigabitEthernet') and '.' not in iface.name %}
       <GigabitEthernet>
-        <name>{{ iface.name.replace('GigabitEthernet', '') }}</name>
+        <name>{{ iface.name.replace('GigabitEthernet','') }}</name>
 
         {% if iface.description %}
         <description>{{ iface.description }}</description>
@@ -75,10 +70,8 @@
       {% endif %}
 
       {% endfor %}
-
     </interface>
 
-    <!-- ================= ROUTING (SINGLE CONTAINER) ================= -->
     {% if full_context.ospf is defined or full_context.bgp is defined %}
     <router>
 
@@ -106,7 +99,6 @@
       {% if full_context.bgp is defined %}
       <bgp xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-bgp">
         <id>{{ full_context.bgp.as_number }}</id>
-
         {% for n in full_context.bgp.neighbors %}
         <neighbor>
           <id>{{ n.ip }}</id>
