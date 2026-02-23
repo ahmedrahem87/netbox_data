@@ -23,7 +23,11 @@ interface {{ iface.name }}
   {% endif %}
  {% endif %}
 
- {# 2. IP Address & Features Logic (Only if interface has IPs) #}
+ {# 2. IP Address & VRF Logic #}
+ {% if iface.vrf %}
+ vrf forwarding {{ iface.vrf.name }}
+ {% endif %}
+
  {% if iface.ip_addresses.all() %}
   {% for ip in iface.ip_addresses.all() %}
    {% if ip.family == 4 %}
@@ -33,8 +37,8 @@ interface {{ iface.name }}
    {% endif %}
   {% endfor %}
 
-  {# Apply OSPF/MPLS only to interfaces with IPs that aren't Loopbacks #}
-  {% if "Loopback" not in iface.name %}
+  {# Apply OSPF/MPLS ONLY if there is NO VRF and it's not a Loopback #}
+  {% if not iface.vrf and "Loopback" not in iface.name %}
  ip ospf network point-to-point
  ip ospf hello-interval 5
    {% if full_context.ospf is defined %}
@@ -43,7 +47,7 @@ interface {{ iface.name }}
  mpls ip
   {% endif %}
  {% endif %}
- 
+
  no shutdown
 !
 {% endfor %}
