@@ -48,13 +48,16 @@ interface {{ iface.name }}
 !
 {% endfor %}
 
-{# OSPF Process Logic #}
+{# OSPF Logic #}
 {% if full_context.ospf is defined %}
 router ospf {{ full_context.ospf.process_id }}
  {% for iface in device.interfaces.all() if iface.name == 'Loopback0' %}
-  {% for ip in iface.ip_addresses.all() if ip.family.value == 4 %}
+ {% for ip in iface.ip_addresses.all() %}
  router-id {{ ip.address.ip }}
-  {% endfor %}
+ {% endfor %}
+ {% endfor %}
+ {% for net in full_context.ospf.networks %}
+ network {{ net.network }} {{ net.wildcard }} area {{ net.area }}
  {% endfor %}
 !
 {% endif %}
