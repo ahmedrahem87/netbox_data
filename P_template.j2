@@ -1,0 +1,71 @@
+hostname {{ device.name }}
+!
+ip domain name example.com
+ipv6 unicast-routing
+!
+username adam privilege 15 secret 9 $9$mIaRVsm1z68E/k$OZzv/Mu4G/Hq6WKwhCEbDQzr9NvMQXrsG8YOIEK/JBU
+!
+{% set full_context = device.get_config_context() %}
+
+{# Loop through interfaces #}
+{% for iface in device.interfaces.all() %}
+interface {{ iface.name }}
+ 
+ {# 1. Dynamic Description Logic #}
+ {% set peer = iface.connected_endpoints[0] if iface.connected_endpoints else none %}
+ 
+ {% if iface.parent %}
+   {# This is a SUB-INTERFACE - Look for Peer/Circuit info #}
+   {% if peer and peer.interface %}
+  description {{ peer.interface.device.name }}-{{ peer.interface.name }}-{{ peer.virtual_circuit.cid if peer.virtual_circuit else 'P2P' }}
+   {% elif iface.description %}
+  description {{ iface.description }}
+   {% endif %}
+   
+   {# 2. Subinterface dot1Q Logic #}
+   {% if iface.tagged_vlans.all() %}
+  encapsulation dot1Q {{ iface.tagged_vlans.all()[0].vid }}
+   {% endif %}
+
+ {% else %}
+   {# This is a PHYSICAL interface - Use the standard NetBox description #}
+   {% if iface.description %}
+  description {{ iface.description }}
+   {% endif %}
+ {% endif %}
+
+ {# 3. IPv4 addresses (Works for both) #}
+ {% for ip in iface.ip_addresses.all() %}
+  {% if ip.family == 4 %}
+  ip address {{ ip.address.ip }} {{ ip.address.netmask }}
+  {% endif %}
+ {% endfor %}
+ no shutdown
+!
+{% endfor %}
+
+{# OSPF Logic #}
+{% if full_context.ospf is defined %}
+router ospf {{ full_context.ospf.process_id }}
+ {% for iface in device.interfaces.all() if iface.name == 'Loopback0' %}
+ {% for ip in iface.ip_addresses.all() %}
+ router-id {{ ip.address.ip }}
+ {% endfor %}
+ {% endfor %}
+ {% for net in full_context.ospf.networks %}
+ network {{ net.network }} {{ net.wildcard }} area {{ net.area }}
+ {% endfor %}
+!
+{% endif %}
+
+
+{# BGP Logic - Looking at device.get_config_context() #}
+{% if full_context.bgp is defined %}
+router bgp {{ full_context.bgp.as_number }}
+ bgp log-neighbor-changes
+ {% for n in full_context.bgp.neighbors %}
+ neighbor {{ n.ip }} remote-as {{ n.remote_as }}
+ neighbor {{ n.ip }} update-source Loopback0
+ {% endfor %}
+!
+{% endif %}
