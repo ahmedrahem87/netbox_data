@@ -1,0 +1,15 @@
+{
+    "bgp": {
+        "as_number": 65000,
+        "neighbors": [
+            {"ip": "150.1.1.1", "remote_as": 65000, "description": "R1-Route-Reflector"}
+        ]
+    },
+    "ospf": {
+        "process_id": 100,
+        "networks": [
+            {"network": "150.1.0.0", "wildcard": "0.0.255.255", "area": 0},
+            {"network": "155.1.0.0", "wildcard": "0.0.255.255", "area": 0}
+        ]
+    }
+}
