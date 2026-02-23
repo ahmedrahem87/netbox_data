@@ -1,4 +1,4 @@
-hostname {{ device.name }}
+hostname {{ device.name }} 
 !
 {% set full_context = device.get_config_context() %}
 
@@ -26,6 +26,7 @@ interface {{ iface.name }}
  {# 2. IP Address & VRF Logic #}
  {% if iface.vrf %}
  vrf forwarding {{ iface.vrf.name }}
+ description {{ifac.tags.name}}
  {% endif %}
 
  {% if iface.ip_addresses.all() %}
