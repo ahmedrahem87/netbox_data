@@ -26,9 +26,9 @@ interface {{ iface.name }}
  {# 2. IP Address & Features Logic (Only if interface has IPs) #}
  {% if iface.ip_addresses.all() %}
   {% for ip in iface.ip_addresses.all() %}
-   {% if ip.family.value == 4 %}
+   {% if ip.family == 4 %}
  ip address {{ ip.address.ip }} {{ ip.address.netmask }}
-   {% elif ip.family.value == 6 %}
+   {% elif ip.family == 6 %}
  ipv6 address {{ ip.address }}
    {% endif %}
   {% endfor %}
