@@ -26,7 +26,7 @@ interface {{ iface.name }}
  {# 2. IP Address & VRF Logic #}
  {% if iface.vrf %}
  vrf forwarding {{ iface.vrf.name }}
- description {{ iface.tags.name }}
+ description {{ iface.tags[0].name }}
  {% endif %}
 
  {% if iface.ip_addresses.all() %}
