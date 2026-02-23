@@ -36,7 +36,7 @@ interface {{ iface.name }}
 
  {# 3. IPv4 addresses (Works for both) #}
  {% for ip in iface.ip_addresses.all() %}
-  {% if ip.family.value == 4 %}
+  {% if ip.family == 4 %}
   ip address {{ ip.address.ip }} {{ ip.address.netmask }}
   {% endif %}
  {% endfor %}
