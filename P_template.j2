@@ -1,47 +1,5 @@
 hostname {{ device.name }} 
 !
-{% set full_context = device.get_config_context() %}
-!
-{# 1. Find the Loopback0 IP for this specific router #}
-{% set loopback_ip = none %}
-{% for iface in device.interfaces.all() %}
-  {% if "Loopback0" in iface.name and iface.ip_addresses.all() %}
-    {# Extracts just the IP address without the CIDR mask #}
-    {% set loopback_ip = iface.ip_addresses.all()[0].address.ip %}
-  {% endif %}
-{% endfor %}
-
-{# 2. Collect VRFs from this device's interfaces #}
-{% set vrf_set = [] %}
-{% for iface in device.interfaces.all() %}
-  {% if iface.vrf and iface.vrf not in vrf_set %}
-    {% set _ = vrf_set.append(iface.vrf) %}
-  {% endif %}
-{% endfor %}
-
-{# 3. Render Configuration #}
-{% for vrf in vrf_set %}
-vrf definition {{ vrf.name }}
- {# Logic: If Loopback exists, use Loopback:Suffix. Otherwise, fallback to NetBox RD #}
- {% if loopback_ip %}
-  {% set rd_suffix = vrf.rd.split(':')[-1] %}
-  rd {{ loopback_ip }}:{{ rd_suffix }}
- {% else %}
-  rd {{ vrf.rd }}
- {% endif %}
- !
- address-family ipv4
-  {# RTs are global, so we pull them directly from the VRF object #}
-  {% for rt in vrf.export_targets.all() %}
-  route-target export {{ rt.name }}
-  {% endfor %}
-  {% for rt in vrf.import_targets.all() %}
-  route-target import {{ rt.name }}
-  {% endfor %}
- exit-address-family
-!
-{% endfor %}
-!
 {# Loop through interfaces #}
 {% for iface in device.interfaces.all() %}
 interface {{ iface.name }}
