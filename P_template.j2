@@ -1,7 +1,36 @@
 hostname {{ device.name }} 
 !
 {% set full_context = device.get_config_context() %}
+!
+{# 1. Extract Loopback0 IP at the start #}
+{% set loopback_ip = "0.0.0.0" %}
+{% for iface in device.interfaces.all() %}
+  {% if iface.name == "Loopback0" and iface.ip_addresses.all() %}
+    {# We split by '/' to get just the IP, e.g., 150.1.1.1 #}
+    {% set loopback_ip = iface.ip_addresses.all()[0].address.ip %}
+  {% endif %}
+{% endfor %}
 
+{# 2. Loop through all VRFs assigned to this device #}
+{% for vrf in device.get_vrfs() %}
+vrf definition {{ vrf.name }}
+ {# Use the extracted Loopback IP + the RD suffix from NetBox #}
+ {# Assuming NetBox RD is stored as ':100', we combine them #}
+ rd {{ loopback_ip }}{{ vrf.rd if ':' in vrf.rd else ':' + vrf.rd }}
+
+ {# 3. Route Target Logic #}
+ {% for et in vrf.export_targets.all() %}
+ route-target export {{ et.name }}
+ {% endfor %}
+ {% for it in vrf.import_targets.all() %}
+ route-target import {{ it.name }}
+ {% endfor %}
+ !
+ address-family ipv4
+ exit-address-family
+!
+{% endfor %}
+!
 {# Loop through interfaces #}
 {% for iface in device.interfaces.all() %}
 interface {{ iface.name }}
