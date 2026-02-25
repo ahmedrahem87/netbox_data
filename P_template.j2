@@ -1,5 +1,7 @@
 hostname {{ device.name }} 
 !
+{% set full_context = device.get_config_context() %}
+
 {# Loop through interfaces #}
 {% for iface in device.interfaces.all() %}
 interface {{ iface.name }}
